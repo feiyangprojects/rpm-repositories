@@ -1,0 +1,74 @@
+name: RPM CI
+
+on:
+  workflow_dispatch:
+    push:
+    inputs:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+      - name: Setup environment
+        run: |
+          curl --location https://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_22.04/Release.key | sudo gpg --dearmor --output /etc/apt/keyrings/opensuse-tools.gpg
+          echo 'deb [signed-by=/etc/apt/keyrings/opensuse-tools.gpg] https://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_22.04 ./' | sudo tee /etc/apt/sources.list.d/opensuse-tools.list
+          sudo apt update
+          sudo apt install --yes createrepo-c gnupg osc rclone rpm
+      - name: Setup OSC configuration
+        run: |
+          mkdir --parents ~/.config/osc
+          cat << EOF > ~/.config/osc/oscrc
+          [general]
+          apiurl=${{ secrets.OBS_API_URL }}
+          [${{ secrets.OBS_API_URL }}]
+          user=${{ secrets.OBS_USER }}
+          pass=${{ secrets.OBS_PASS }}
+          credentials_mgr_class=osc.credentials.PlaintextConfigFileCredentialsManager
+          EOF
+      - name: Checkout additional source code
+        run: |
+          mkdir repository
+          osc checkout --output-dir package "$(< PROJECT)" "$(< PACKAGE)"
+      - name: Patch additional source code
+        run: |
+          cd package
+          if [ -d "$PWD/../patches" ]; then
+            for i in $(ls -1 "$PWD/../patches"); do
+              patch < "$PWD/../patches/$i"
+            done
+          fi
+      - name: Build RPM packages
+        run: |
+          cd package
+          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1'
+          find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
+          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1' --multibuild-package drivers
+          find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
+      - name: Setup GPG and RPM configuration
+        run: |
+          base64 -d <<< '${{ secrets.RPM_GPG_KEY }}' > rpm.gpg
+          gpg --import rpm.gpg
+          cat << EOF > ~/.rpmmacros
+          %_signature gpg
+          %_gpg_name ${{ secrets.RPM_GPG_NAME }}
+          EOF
+      - name: Sign RPM packages
+        run: |
+          cd repository
+          rpm --addsign *
+      - name: Create RPM repository
+        run: |
+          cd repository
+          createrepo_c .
+          gpg --detach-sign --armor repodata/repomd.xml
+      - name: Setup Rclone configuration
+        run: |
+          base64 -d <<< '${{ secrets.RPM_RCLONE_CONFIG }}' > rclone.conf
+      - name: Publish RPM repository
+        run: |
+          cd repository
+          rclone --progress --config ../rclone.conf purge storage:"$(< PATH)" || true
+          rclone --progress --config ../rclone.conf copy . storage:"$(< PATH)"
