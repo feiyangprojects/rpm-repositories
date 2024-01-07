@@ -70,5 +70,5 @@ jobs:
       - name: Publish RPM repository
         run: |
           cd repository
-          rclone --progress --config ../rclone.conf purge storage:"$(< PATH)" || true
-          rclone --progress --config ../rclone.conf copy . storage:"$(< PATH)"
+          rclone --progress --config ../rclone.conf purge storage:"$(< ../PATH)" || true
+          rclone --progress --config ../rclone.conf copy . storage:"$(< ../PATH)"
