@@ -13,6 +13,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Setup environment
         run: |
+          sudo mkdir --parent /etc/apt/keyrings
           curl --location https://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_22.04/Release.key | sudo gpg --dearmor --output /etc/apt/keyrings/opensuse-tools.gpg
           echo 'deb [signed-by=/etc/apt/keyrings/opensuse-tools.gpg] https://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_22.04 ./' | sudo tee /etc/apt/sources.list.d/opensuse-tools.list
           sudo apt update
@@ -27,6 +28,7 @@ jobs:
           user=${{ secrets.OBS_USER }}
           pass=${{ secrets.OBS_PASS }}
           credentials_mgr_class=osc.credentials.PlaintextConfigFileCredentialsManager
+          trusted_prj=$(sed 's/_/:/' REPOSITORY)
           EOF
       - name: Checkout additional source code
         run: |
@@ -43,9 +45,9 @@ jobs:
       - name: Build RPM packages
         run: |
           cd package
-          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1'
+          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1' "$(< ../REPOSITORY)"
           find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
-          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1' --multibuild-package drivers
+          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1' --multibuild-package drivers "$(< ../REPOSITORY)"
           find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
       - name: Setup GPG and RPM configuration
         run: |
