@@ -43,10 +43,14 @@ jobs:
       - name: Build RPM packages
         run: |
           cd package
-          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1'
-          find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
-          osc build --no-checks --no-verify --no-service --vm-type chroot --define 'BUILD_ORIG 1' --multibuild-package drivers
-          find /var/tmp/build-root/ -name '*.rpm' -exec cp {} ../repository \; || true
+          for flavor in '' 'drivers'; do
+              BUILD=('--no-checks' '--no-debug-packages' '--no-verify' '--no-service' '--vm-type' 'chroot')
+              if [ "$flavor" != "" ]; then
+                  BUILD+=('--multibuild-package' "$flavor")
+              fi
+              osc build --define 'BUILD_ORIG 1' ${BUILD[@]}
+              find "$(osc build --just-print-buildroot)" -xdev -name '*.rpm' -and -not -name '*-debuginfo-*' -and -not -name '*-debugsource-*' -exec cp {} ../repository \; || true
+          done
       - name: Setup GPG and RPM configuration
         run: |
           base64 -d <<< '${{ secrets.RPM_GPG_KEY }}' > rpm.gpg
