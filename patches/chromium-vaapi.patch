@@ -1,19 +1,19 @@
 Index: Mesa.spec
 ===================================================================
---- Mesa.spec	(revision 493)
+--- Mesa.spec	(revision 499)
 +++ Mesa.spec	(working copy)
-@@ -148,6 +148,7 @@
- Patch100:       U_fix-mpeg1_2-decode-mesa-20.2.patch
- Patch200:       u_fix-build-on-ppc64le.patch
- Patch400:       n_stop-iris-flicker.patch
+@@ -159,6 +159,7 @@
+ Patch508:       0008-pipe-loader-plumb-a-flag-for-implicit-driver-load-th.patch
+ Patch509:       0009-zink-don-t-print-error-messages-when-failing-an-impl.patch
+ Patch510:       0010-glx-silence-more-implicit-load-zink-errors.patch
 +Patch10000:     gitlab.freedesktop.org-26165.patch
  %ifarch %{ix86} x86_64
  BuildRequires:  DirectX-Headers
  %endif
-@@ -770,6 +771,7 @@
- %patch -P 100 -p1
- #%patch -P 200 -p1
- %patch -P 400 -p1
+@@ -791,6 +792,7 @@
+ %patch -P 508 -p1
+ %patch -P 509 -p1
+ %patch -P 510 -p1
 +%patch -P 10000 -p1
  
  # Remove requires to vulkan libs from baselibs.conf on platforms
@@ -23,7 +23,7 @@ Index: gitlab.freedesktop.org-26165.patch
 --- gitlab.freedesktop.org-26165.patch	(revision 0)
 +++ gitlab.freedesktop.org-26165.patch	(revision 0)
 @@ -0,0 +1,196 @@
-+From a32b40d14d443a0a44c31648e7151ac8011a8355 Mon Sep 17 00:00:00 2001
++From 9f782611c02acb2decfd4d7586f426939161c8b2 Mon Sep 17 00:00:00 2001
 +From: Hannes Mann <hannesmann2000@gmail.com>
 +Date: Mon, 20 Nov 2023 23:16:50 +0100
 +Subject: [PATCH 1/2] gallium/pipe: Add contiguous planes per-surface attribute
@@ -39,7 +39,7 @@ Index: gitlab.freedesktop.org-26165.patch
 + 5 files changed, 7 insertions(+), 2 deletions(-)
 +
 +diff --git a/src/gallium/auxiliary/vl/vl_video_buffer.c b/src/gallium/auxiliary/vl/vl_video_buffer.c
-+index 4d95f762510..686e8b0aede 100644
++index 69cc4563d..c39717f2b 100644
 +--- a/src/gallium/auxiliary/vl/vl_video_buffer.c
 ++++ b/src/gallium/auxiliary/vl/vl_video_buffer.c
 +@@ -535,5 +535,6 @@ vl_video_buffer_create_as_resource(struct pipe_context *pipe,
@@ -50,10 +50,10 @@ Index: gitlab.freedesktop.org-26165.patch
 +    return vl_video_buffer_create_ex2(pipe, &vidtemplate, resources);
 + }
 +diff --git a/src/gallium/drivers/d3d12/d3d12_video_buffer.cpp b/src/gallium/drivers/d3d12/d3d12_video_buffer.cpp
-+index 14dc1a6156d..6d508cde6ee 100644
++index dffb038e3..ea8c7ee12 100644
 +--- a/src/gallium/drivers/d3d12/d3d12_video_buffer.cpp
 ++++ b/src/gallium/drivers/d3d12/d3d12_video_buffer.cpp
-+@@ -57,6 +57,7 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
++@@ -59,6 +59,7 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
 +    pD3D12VideoBuffer->base.width         = tmpl->width;
 +    pD3D12VideoBuffer->base.height        = tmpl->height;
 +    pD3D12VideoBuffer->base.interlaced    = tmpl->interlaced;
@@ -62,7 +62,7 @@ Index: gitlab.freedesktop.org-26165.patch
 +    pD3D12VideoBuffer->base.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_RENDER_TARGET | PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_CUSTOM;
 + 
 +diff --git a/src/gallium/drivers/r600/r600_uvd.c b/src/gallium/drivers/r600/r600_uvd.c
-+index 9c84b6380ba..e8a50715524 100644
++index 6f893bdb3..57a74156b 100644
 +--- a/src/gallium/drivers/r600/r600_uvd.c
 ++++ b/src/gallium/drivers/r600/r600_uvd.c
 +@@ -78,6 +78,7 @@ struct pipe_video_buffer *r600_video_buffer_create(struct pipe_context *pipe,
@@ -74,7 +74,7 @@ Index: gitlab.freedesktop.org-26165.patch
 + 	vl_video_buffer_template(&templ, &template, resource_formats[0], 1, array_size,
 + 									 PIPE_USAGE_DEFAULT, 0, chroma_format);
 +diff --git a/src/gallium/frontends/va/image.c b/src/gallium/frontends/va/image.c
-+index 98d423f2a4d..65f66af00e8 100644
++index 98d423f2a..65f66af00 100644
 +--- a/src/gallium/frontends/va/image.c
 ++++ b/src/gallium/frontends/va/image.c
 +@@ -277,9 +277,10 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
@@ -91,10 +91,10 @@ Index: gitlab.freedesktop.org-26165.patch
 +    }
 + 
 +diff --git a/src/gallium/include/pipe/p_video_codec.h b/src/gallium/include/pipe/p_video_codec.h
-+index 085dbae3f50..f01a18006c5 100644
++index c94c699e2..5facab197 100644
 +--- a/src/gallium/include/pipe/p_video_codec.h
 ++++ b/src/gallium/include/pipe/p_video_codec.h
-+@@ -181,6 +181,7 @@ struct pipe_video_buffer
++@@ -212,6 +212,7 @@ struct pipe_video_buffer
 +    unsigned height;
 +    bool interlaced;
 +    unsigned bind;
@@ -103,10 +103,10 @@ Index: gitlab.freedesktop.org-26165.patch
 +    /**
 +     * destroy this video buffer
 +-- 
-+2.43.0
++2.44.0
 +
 +
-+From 50336022b4d365c167ad38e0a03edfa2583becdd Mon Sep 17 00:00:00 2001
++From 8cad2d3d3931ef59141de45c26c4263e19422ea0 Mon Sep 17 00:00:00 2001
 +From: Hannes Mann <hannesmann2000@gmail.com>
 +Date: Mon, 20 Nov 2023 23:17:31 +0100
 +Subject: [PATCH 2/2] frontends/va: Only export one handle for contiguous
@@ -120,20 +120,20 @@ Index: gitlab.freedesktop.org-26165.patch
 + 1 file changed, 40 insertions(+), 22 deletions(-)
 +
 +diff --git a/src/gallium/frontends/va/surface.c b/src/gallium/frontends/va/surface.c
-+index baddba39bbc..ab9271a1be4 100644
++index 2f153abde..321057dbe 100644
 +--- a/src/gallium/frontends/va/surface.c
 ++++ b/src/gallium/frontends/va/surface.c
-+@@ -1630,6 +1630,9 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
-+    desc->fourcc = PipeFormatToVaFourcc(buffer->buffer_format);
++@@ -1621,6 +1621,9 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
++    desc->fourcc = PipeFormatToVaFourcc(surf->buffer->buffer_format);
 +    desc->width  = surf->templat.width;
 +    desc->height = surf->templat.height;
 ++   desc->num_objects = 0;
 ++
-++   bool supports_contiguous_planes = screen->resource_get_info && buffer->contiguous_planes;
+++   bool supports_contiguous_planes = screen->resource_get_info && surf->buffer->contiguous_planes;
 + 
 +    for (p = 0; p < ARRAY_SIZE(desc->objects); p++) {
 +       struct winsys_handle whandle;
-+@@ -1647,37 +1650,52 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
++@@ -1638,37 +1641,52 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
 +          goto fail;
 +       }
 + 
@@ -205,9 +205,9 @@ Index: gitlab.freedesktop.org-26165.patch
 +-   desc->num_objects = p;
 +-
 +    if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS) {
-+       uint32_t drm_format = pipe_format_to_drm_format(buffer->buffer_format);
++       uint32_t drm_format = pipe_format_to_drm_format(surf->buffer->buffer_format);
 +       if (drm_format == DRM_FORMAT_INVALID) {
-+@@ -1699,7 +1717,7 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
++@@ -1690,7 +1708,7 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
 + 
 + fail:
 + #ifndef _WIN32
@@ -217,5 +217,5 @@ Index: gitlab.freedesktop.org-26165.patch
 + #else
 +    if(whandle.handle)
 +-- 
-+2.43.0
++2.44.0
 +
