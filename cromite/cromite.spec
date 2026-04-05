@@ -21,7 +21,7 @@ License:        GPL-3.0-only
 URL:            https://github.com/uazo/cromite
 Source0:        https://github.com/uazo/cromite/releases/download/latest/chrome-lin64.tar.gz
 Source1:        cromite.desktop
-Source2:        https://www.cromite.org/app_icon.png
+Source2:        cromite.png
 
 %description
 Cromite is a Chromium fork based on Bromite with built-in support for ad blocking and an eye for privacy.
