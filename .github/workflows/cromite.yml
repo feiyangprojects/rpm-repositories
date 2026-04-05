@@ -1,0 +1,26 @@
+name: RPM CI
+
+on:
+  push:
+    paths:
+      - '.github/actions/rpm/action.yml'
+      - '.github/workflows/cromite.yml'
+      - 'cromite/**'
+  schedule:
+    - cron:  '0 17 * * 5'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      PACKAGE: cromite
+      GPG_NAME: ${{ secrets.RPM_GPG_NAME }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      - name: Build RPM package
+        uses: ./.github/actions/rpm
+        with:
+          gpg-key: ${{ secrets.RPM_GPG_KEY }}
+          rclone-config: ${{ secrets.RPM_RCLONE_CONFIG }}

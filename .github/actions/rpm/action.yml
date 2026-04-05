@@ -1,0 +1,58 @@
+name: RPM Composite Action
+description: Composite action for building RPM package
+inputs:
+  rclone-config:
+    description: Base64 encoded Rclone config file
+    required: true
+  gpg-key:
+    description: Base64 encoded GnuPG key pair
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup environment
+      run: |
+        sudo apt update
+        sudo apt install --yes curl createrepo-c gnupg jq rclone rpm
+      shell: bash
+    - name: Fetch additional sources
+      run: |
+        if [ -x "./$PACKAGE/prepare.sh" ]; then
+          "./$PACKAGE/prepare.sh"
+        fi
+      shell: bash
+    - name: Build RPM packages
+      run: |
+        rpmbuild -bb --define "_sourcedir $PWD/$PACKAGE" --define "_rpmdir $PWD/repository" "$PACKAGE/$PACKAGE.spec"
+      shell: bash
+    - name: Setup GPG and RPM configuration
+      run: |
+        base64 -d <<< '${{ inputs.gpg-key }}' > rpm.gpg
+        gpg --import rpm.gpg
+        rm -f rpm.gpg
+        cat << EOF > ~/.rpmmacros
+        %_signature gpg
+        %_gpg_name $GPG_NAME
+        EOF
+      shell: bash
+    - name: Sign RPM packages
+      run: |
+        find repository -name '*.rpm' -exec rpm --addsign {} \;
+      shell: bash
+    - name: Create RPM repository
+      run: |
+        cd repository
+        createrepo_c .
+        gpg --detach-sign --armor repodata/repomd.xml
+      shell: bash
+    - name: Setup Rclone configuration
+      env:
+        RCLONE_CONFIG: ${{ inputs.rclone-config }}
+      run: |
+        mkdir -p ~/.config/rclone
+        base64 -d <<< "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
+      shell: bash
+    - name: Publish RPM repository
+      run: |
+        rclone --verbose --transfers 16 sync repository "storage:$PACKAGE"
+      shell: bash
